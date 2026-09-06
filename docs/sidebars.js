@@ -148,6 +148,8 @@ module.exports = {
         'guides/pipe',
         'guides/pipe-standalone',
         'guides/view-child',
+        'guides/content-child',
+        'guides/content-children',
         'guides/ngonchanges',
         'guides/provider',
         'guides/token',
@@ -166,6 +168,8 @@ module.exports = {
       collapsed: false,
       items: [
         'guides/mock/initialization-logic',
+        'guides/mock/content-child',
+        'guides/mock/content-children',
         'guides/mock/dynamic-components',
         'guides/mock/directive-structural-let-of',
         'guides/mock/host-directive',
