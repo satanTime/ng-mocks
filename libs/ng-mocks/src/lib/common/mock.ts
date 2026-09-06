@@ -8,7 +8,6 @@ import helperMockService from '../mock-service/helper.mock-service';
 
 import coreDefineProperty from './core.define-property';
 import coreForm from './core.form';
-import { mapValues } from './core.helpers';
 import { AnyType, DirectiveIo } from './core.types';
 import funcDirectiveIoParse from './func.directive-io-parse';
 import funcIsMock from './func.is-mock';
@@ -154,17 +153,16 @@ const applyInputs = (instance: MockConfig & Record<keyof any, any>) => {
 };
 
 const applyPrototype = (instance: Mock, prototype: AnyType<any>) => {
-  for (const prop of [
-    ...helperMockService.extractMethodsFromPrototype(prototype),
-    ...helperMockService.extractPropertiesFromPrototype(prototype),
-  ]) {
+  const properties: string[] = [];
+  const methods = helperMockService.extractMethodsFromPrototype(prototype, properties);
+  for (const prop of [...methods, ...properties]) {
     const descriptor = helperMockService.extractPropertyDescriptor(prototype, prop);
     helperMockService.definePropertyDescriptor(instance, prop, descriptor);
   }
 };
 
-const applyMethods = (instance: Mock & Record<keyof any, any>, prototype: AnyType<any>) => {
-  for (const method of helperMockService.extractMethodsFromPrototype(prototype)) {
+const applyMethods = (instance: Mock & Record<keyof any, any>, methods: string[]) => {
+  for (const method of methods) {
     if (instance[method] || Object.getOwnPropertyDescriptor(instance, method)) {
       continue;
     }
@@ -172,8 +170,8 @@ const applyMethods = (instance: Mock & Record<keyof any, any>, prototype: AnyTyp
   }
 };
 
-const applyProps = (instance: Mock & Record<keyof any, any>, prototype: AnyType<any>) => {
-  for (const prop of helperMockService.extractPropertiesFromPrototype(prototype)) {
+const applyProps = (instance: Mock & Record<keyof any, any>, properties: string[]) => {
+  for (const prop of properties) {
     if (instance[prop] || Object.getOwnPropertyDescriptor(instance, prop)) {
       continue;
     }
@@ -198,7 +196,7 @@ export type ngMocksMockConfig = {
 
 const applyOverrides = (instance: any, mockOf: any, injector?: Injector): void => {
   const configGlobal: Set<any> | undefined = ngMocksUniverse.getOverrides().get(mockOf);
-  const callbacks = configGlobal ? mapValues(configGlobal) : [];
+  const callbacks = configGlobal ? [...configGlobal] : [];
   if (instance.__ngMocksConfig.init) {
     callbacks.push(instance.__ngMocksConfig.init);
   }
@@ -249,8 +247,10 @@ export class Mock {
       applyInputs(this);
       applyOutputs(this);
       applyPrototype(this, Object.getPrototypeOf(this));
-      applyMethods(this, mockOf.prototype);
-      applyProps(this, mockOf.prototype);
+      const properties: string[] = [];
+      const methods = helperMockService.extractMethodsFromPrototype(mockOf.prototype, properties);
+      applyMethods(this, methods);
+      applyProps(this, properties);
     }
 
     // and faking prototype

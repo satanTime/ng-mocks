@@ -3,7 +3,6 @@ import { TestBed } from '@angular/core/testing';
 import helperReplayInstance from '../mock-service/helper.replay-instance';
 
 import coreDefineProperty from './core.define-property';
-import { mapEntries } from './core.helpers';
 import { getSourceOfMock } from './func.get-source-of-mock';
 import { isMockNgDef } from './func.is-mock-ng-def';
 
@@ -78,8 +77,8 @@ export const rememberMockDeclarations = (mocks?: Map<any, any>): void => {
     return;
   }
 
-  const next = new Map(getNgMocksTestBed().ngMocksMockDeclarations);
-  for (const [key, value] of mapEntries(mocks)) {
+  const next = getNgMocksTestBed().ngMocksMockDeclarations || new Map();
+  for (const [key, value] of mocks) {
     next.set(key, value);
   }
 

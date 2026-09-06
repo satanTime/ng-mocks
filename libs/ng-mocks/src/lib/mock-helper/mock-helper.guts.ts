@@ -1,7 +1,7 @@
 import { TestModuleMetadata } from '@angular/core/testing';
 
 import CoreDefStack from '../common/core.def-stack';
-import { flatten, mapKeys, mapValues } from '../common/core.helpers';
+import { flatten } from '../common/core.helpers';
 import coreReflectModuleResolve from '../common/core.reflect.module-resolve';
 import funcGetType from '../common/func.get-type';
 import { isNgDef } from '../common/func.is-ng-def';
@@ -179,7 +179,7 @@ const resolve = (data: Data, proto: any, skipDestruction = true): void => {
 };
 
 const generateDataWithUniverse = (keep: Set<any>, mock: Set<any>, exclude: Set<any>, optional: Map<any, any>): void => {
-  for (const k of mapKeys(ngMocksUniverse.getDefaults())) {
+  for (const k of ngMocksUniverse.getDefaults().keys()) {
     const v = ngMocksUniverse.getBuildDeclaration(k);
     if (keep.has(k) || mock.has(k) || exclude.has(k)) {
       continue;
@@ -220,15 +220,15 @@ export default (keep: any, mock: any = null, exclude: any = null): TestModuleMet
 
   const resolutions = new Map();
   ngMocksUniverse.config.set('ngMocksDepsResolution', resolutions);
-  for (const mockDef of mapValues(data.keep)) {
+  for (const mockDef of data.keep) {
     resolutions.set(mockDef, 'keep');
   }
-  for (const mockDef of mapValues(data.exclude)) {
+  for (const mockDef of data.exclude) {
     resolutions.set(mockDef, 'exclude');
   }
 
   ngMocksUniverse.config.set('mockNgDefResolver', new CoreDefStack());
-  for (const def of mapValues(data.mock)) {
+  for (const def of data.mock) {
     resolutions.set(def, 'mock');
     if (data.optional.has(def)) {
       continue;

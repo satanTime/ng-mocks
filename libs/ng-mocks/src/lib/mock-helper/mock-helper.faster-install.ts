@@ -19,22 +19,46 @@ const hooks: {
 };
 ngMocksUniverse.global.set('faster-hooks', hooks);
 
-const configureTestingModule =
-  (
-    original: TestBedStatic['configureTestingModule'],
-    instance: TestBedStatic,
-  ): TestBedStatic['configureTestingModule'] =>
-  (moduleDef: TestModuleMetadata) => {
+const createApplyHooks = <T>(
+  original: T,
+  instance: TestBedStatic,
+  getHooks: () => Array<(original: T, instance: TestBedStatic) => T>,
+) => {
+  let applied: Array<(original: T, instance: TestBedStatic) => T> = [];
+  let final = original;
+
+  return () => {
+    const callbacks = getHooks();
+    let changed = callbacks.length !== applied.length;
+    for (let i = 0; !changed && i < callbacks.length; i += 1) {
+      changed = callbacks[i] !== applied[i];
+    }
+    if (changed) {
+      final = original;
+      for (const callback of callbacks) {
+        final = callback(final, instance);
+      }
+      applied = [...callbacks];
+    }
+
+    return final;
+  };
+};
+
+const configureTestingModule = (
+  original: TestBedStatic['configureTestingModule'],
+  instance: TestBedStatic,
+): TestBedStatic['configureTestingModule'] => {
+  const applyHooks = createApplyHooks(original, instance, () => hooks.before);
+
+  return (moduleDef: TestModuleMetadata) => {
     if ((TestBed as any).ngMocksFasterLock) {
       return original.call(instance, moduleDef);
     }
 
     ngMocksUniverse.global.set('bullet:customized', true);
 
-    let final = original;
-    for (const callback of hooks.before) {
-      final = callback(final, instance);
-    }
+    const final = applyHooks();
 
     try {
       coreDefineProperty(TestBed, 'ngMocksFasterLock', true);
@@ -44,10 +68,15 @@ const configureTestingModule =
       coreDefineProperty(TestBed, 'ngMocksFasterLock', undefined);
     }
   };
+};
 
-const resetTestingModule =
-  (original: TestBedStatic['resetTestingModule'], instance: TestBedStatic): TestBedStatic['resetTestingModule'] =>
-  () => {
+const resetTestingModule = (
+  original: TestBedStatic['resetTestingModule'],
+  instance: TestBedStatic,
+): TestBedStatic['resetTestingModule'] => {
+  const applyHooks = createApplyHooks(original, instance, () => hooks.after);
+
+  return () => {
     if ((TestBed as any).ngMocksFasterLock) {
       return original.call(instance);
     }
@@ -62,10 +91,7 @@ const resetTestingModule =
     ngMocksUniverse.global.delete('bullet:customized');
     ngMocksUniverse.global.delete('bullet:reset');
 
-    let final = original;
-    for (const callback of hooks.after) {
-      final = callback(final, instance);
-    }
+    const final = applyHooks();
 
     try {
       coreDefineProperty(TestBed, 'ngMocksFasterLock', true);
@@ -75,6 +101,7 @@ const resetTestingModule =
       coreDefineProperty(TestBed, 'ngMocksFasterLock', undefined);
     }
   };
+};
 
 export default () => {
   if (!(TestBed as any).ngMocksFasterInstalled) {

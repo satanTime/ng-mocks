@@ -2,7 +2,7 @@ import { NgModule } from '@angular/core';
 import { TestBed, TestBedStatic, TestModuleMetadata } from '@angular/core/testing';
 
 import CoreDefStack from '../common/core.def-stack';
-import { flatten, mapValues } from '../common/core.helpers';
+import { flatten } from '../common/core.helpers';
 import { Type } from '../common/core.types';
 import funcGetName from '../common/func.get-name';
 import { isNgDef } from '../common/func.is-ng-def';
@@ -222,7 +222,8 @@ export class MockBuilderPromise implements IMockBuilder {
   ): Promise<TResult1> {
     const promise = new Promise((resolve: (value: IMockBuilderResult) => void): void => {
       const testBed: TestBedStatic = TestBed.configureTestingModule(this.build()) as never;
-      for (const callback of mapValues(this.beforeCC)) {
+      // eslint-disable-next-line unicorn/no-useless-spread -- Callbacks added during compilation belong to the next run.
+      for (const callback of [...this.beforeCC]) {
         callback(testBed);
       }
       const testBedPromise = testBed.compileComponents();

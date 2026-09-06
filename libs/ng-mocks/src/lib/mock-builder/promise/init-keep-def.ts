@@ -1,4 +1,3 @@
-import { mapValues } from '../../common/core.helpers';
 import { funcExtractDeps } from '../../common/func.extract-deps';
 import ngMocksUniverse from '../../common/ng-mocks-universe';
 import checkIsClass from '../../mock-service/check.is-class';
@@ -10,7 +9,8 @@ export default (keepDef: Set<any>, configDef: Map<any, any>): Set<any> => {
   const builtDeclarations = ngMocksUniverse.builtDeclarations;
   const builtProviders = ngMocksUniverse.builtProviders;
   const resolutions = ngMocksUniverse.config.get('ngMocksDepsResolution');
-  for (const def of mapValues(keepDef)) {
+  // eslint-disable-next-line unicorn/no-useless-spread -- A user config's shallow getter can change kept definitions.
+  for (const def of [...keepDef]) {
     const provider = getRootProviderKeepProvider(def);
     builtDeclarations.set(def, def);
     // Functional router callbacks are definitions, but they are not class

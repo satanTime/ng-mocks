@@ -1,4 +1,4 @@
-import { flatten, mapValues } from '../../common/core.helpers';
+import { flatten } from '../../common/core.helpers';
 import coreReflectProvidedIn from '../../common/core.reflect.provided-in';
 import { AnyDeclaration, Type } from '../../common/core.types';
 import errorJestMock from '../../common/error.jest-mock';
@@ -72,7 +72,7 @@ const isExportedOnRoot = (
     return def;
   }
 
-  for (const parent of mapValues(cnfInstance.exported)) {
+  for (const parent of cnfInstance.exported) {
     const returnModule = isExportedOnRoot(parent, configInstance, configDef);
     // istanbul ignore else
     if (returnModule) {
@@ -101,10 +101,10 @@ const moveModulesUp = <T>(a: T, b: T) => {
 export default ({ configDefault, keepDef, mockDef, replaceDef }: BuilderData, defProviders: Map<any, any>): NgMeta => {
   const meta: NgMeta = { imports: [], declarations: [], providers: [] };
 
-  const processed: AnyDeclaration<any>[] = [];
+  const processed = new Set<AnyDeclaration<any>>();
   const forgotten: AnyDeclaration<any>[] = [];
 
-  const defs = [...mapValues(mockDef), ...mapValues(keepDef), ...mapValues(replaceDef)];
+  const defs = [...mockDef, ...keepDef, ...replaceDef];
   defs.sort(moveModulesUp);
 
   // Adding suitable leftovers.
@@ -113,11 +113,11 @@ export default ({ configDefault, keepDef, mockDef, replaceDef }: BuilderData, de
       isNgDef(originalDef, 'm') && defProviders.has(originalDef)
         ? originalDef
         : isExportedOnRoot(originalDef, ngMocksUniverse.configInstance, ngMocksUniverse.config);
-    if (!def || processed.indexOf(def) !== -1) {
+    if (!def || processed.has(def)) {
       continue;
     }
     const cnfDef = ngMocksUniverse.config.get(def);
-    processed.push(def);
+    processed.add(def);
     cnfDef.onRoot = cnfDef.onRoot || !cnfDef.dependency;
 
     if (isNgDef(def, 'm') && cnfDef.onRoot) {

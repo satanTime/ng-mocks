@@ -11,7 +11,7 @@ import helperCreateClone from '../mock-service/helper.create-clone';
 
 import coreConfig from './core.config';
 import coreDefineProperty from './core.define-property';
-import { flatten, mapEntries, mapValues } from './core.helpers';
+import { flatten } from './core.helpers';
 import coreInjector from './core.injector';
 import coreReflectMeta from './core.reflect.meta';
 import coreReflectProvidedIn from './core.reflect.provided-in';
@@ -70,7 +70,8 @@ const applyOverride = (def: any, override: any) => {
 };
 
 const applyOverrides = (overrides: Map<AnyType<any>, [MetadataOverride<any>, MetadataOverride<any>]>): void => {
-  for (const [def, [override, original]] of mapEntries(overrides)) {
+  // eslint-disable-next-line unicorn/no-useless-spread -- Keep the pending list stable across TestBed override calls.
+  for (const [def, [override, original]] of [...overrides]) {
     (TestBed as any).ngMocksOverrides.set(def, {
       ...original,
       override,
@@ -83,7 +84,8 @@ const applyOverrides = (overrides: Map<AnyType<any>, [MetadataOverride<any>, Met
 const applyNgMocksOverrides = (testBed: TestBedStatic & { ngMocksOverrides?: Map<any, any> }): void => {
   if (testBed.ngMocksOverrides?.size) {
     ngMocks.flushTestBed();
-    for (const [def, original] of mapEntries(testBed.ngMocksOverrides)) {
+    // eslint-disable-next-line unicorn/no-useless-spread -- TestBed override calls can update the shared registry.
+    for (const [def, original] of [...testBed.ngMocksOverrides]) {
       applyOverride(def, original);
     }
   }
@@ -126,7 +128,9 @@ const generateTouches = (moduleDef: Partial<Record<dependencyKeys, any>>, touche
         }
       }
 
-      mapValues(def.__ngMocksTouches, touches);
+      for (const value of def.__ngMocksTouches) {
+        touches.add(value);
+      }
     }
   }
 };
@@ -150,18 +154,25 @@ const defineTouches = (testBed: TestBed, moduleDef: TestModuleMetadata, knownTou
 };
 
 const collectMockDeclarations = (moduleDef: TestModuleMetadata, mocks?: Map<any, any>): Map<any, any> | undefined => {
-  const result = new Map(mocks);
+  let result = mocks;
 
   for (const key of ['imports', 'declarations'] as const) {
     for (const declaration of flatten(moduleDef[key] || [])) {
       const def = funcGetType(declaration);
       if (isMockNgDef(def, 'c') || isMockNgDef(def, 'd') || isMockNgDef(def, 'p')) {
-        result.set(getSourceOfMock(def), def);
+        const source = getSourceOfMock(def);
+        if (result?.get(source) === def) {
+          continue;
+        }
+        if (result === mocks) {
+          result = new Map(mocks);
+        }
+        result!.set(source, def);
       }
     }
   }
 
-  return result.size > 0 ? result : undefined;
+  return result?.size ? result : undefined;
 };
 
 const applyPlatformOverrideDef = (def: any) => {
@@ -196,7 +207,8 @@ const applyPlatformOverridesBasedOnProvidedIn = (provide: any, touches: Set<any>
 };
 
 const applyPlatformOverridesBasedOnDefaults = (touches: Set<any>) => {
-  for (const [provide, [config]] of mapEntries(ngMocksUniverse.getDefaults())) {
+  // eslint-disable-next-line unicorn/no-useless-spread -- Default rules may change while TestBed overrides are applied.
+  for (const [provide, [config]] of [...ngMocksUniverse.getDefaults()]) {
     if (config !== 'mock') {
       continue;
     }
@@ -241,12 +253,21 @@ const configureTestingModule =
     // 0b10 - mock exist
     // 0b01 - real exist
     let hasMocks = 0;
-    const mockBuilder: Array<[any, any, boolean]> = [];
+    const declarations: any[] = [];
     for (const key of useMockBuilder ? ['imports', 'declarations'] : []) {
       for (const declaration of flatten(moduleDef[key as never]) as any[]) {
         if (!declaration) {
           continue;
         }
+        declarations.push(declaration);
+        hasMocks |= isMockNgDef(funcGetType(declaration)) ? 0b10 : 0b01;
+      }
+    }
+    // We should do magic only then both mock and real exist.
+    let finalModuleDef = hasMocks === 0b11 ? undefined : moduleDef;
+    if (!finalModuleDef) {
+      const mockBuilder: Array<[any, any, boolean]> = [];
+      for (const declaration of declarations) {
         mockBuilder.push([
           isNgModuleDefWithProviders(declaration)
             ? {
@@ -257,12 +278,7 @@ const configureTestingModule =
           isNgModuleDefWithProviders(declaration) ? declaration.ngModule : declaration,
           isMockNgDef(funcGetType(declaration)),
         ]);
-        hasMocks |= mockBuilder[mockBuilder.length - 1][2] ? 0b10 : 0b01;
       }
-    }
-    // We should do magic only then both mock and real exist.
-    let finalModuleDef = hasMocks === 0b11 ? undefined : moduleDef;
-    if (!finalModuleDef) {
       let builder = MockBuilder(NG_MOCKS_ROOT_PROVIDERS);
 
       const realDependencies = new Set<AnyType<any>>();
@@ -285,7 +301,7 @@ const configureTestingModule =
           funcExtractDeps(funcGetType(source), realDependencies, true, visitedDependencies, shouldTraverse);
         }
       }
-      for (const dependency of mapValues(realDependencies)) {
+      for (const dependency of realDependencies) {
         // Explicit TestBed entries are applied below and take precedence.
         // Global resolutions keep their existing MockBuilder semantics.
         if (!ngMocksUniverse.getResolution(dependency)) {
@@ -353,6 +369,7 @@ const resetTestingModule =
     resetRuntimeInject();
     ngMocksUniverse.global.delete('builder:config');
     ngMocksUniverse.global.delete('builder:module');
+    ngMocksUniverse.global.delete('builder:promise');
     resetTestModuleOptions();
     (TestBed as any).ngMocksSelectors = undefined;
     resetInjectedDeclarations();

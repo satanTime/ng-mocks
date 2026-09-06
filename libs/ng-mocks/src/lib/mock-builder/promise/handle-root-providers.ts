@@ -1,5 +1,4 @@
 import CoreDefStack from '../../common/core.def-stack';
-import { mapValues } from '../../common/core.helpers';
 import { NG_MOCKS_ROOT_PROVIDERS } from '../../common/core.tokens';
 import { isNgInjectionToken } from '../../common/func.is-ng-injection-token';
 import ngMocksUniverse from '../../common/ng-mocks-universe';
@@ -14,7 +13,7 @@ export default (ngModule: NgMeta, { keepDef, mockDef }: BuilderData, resolutions
   // Adding missed providers.
   const parameters = keepDef.has(NG_MOCKS_ROOT_PROVIDERS) ? new Set() : getRootProviderParameters(mockDef);
   if (parameters.size > 0) {
-    for (const parameter of mapValues(parameters)) {
+    for (const parameter of parameters) {
       const mock = helperResolveProvider(parameter, resolutions);
       if (mock) {
         ngModule.providers.push(mock);

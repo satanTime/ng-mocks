@@ -1,6 +1,5 @@
 import { TestBed, TestModuleMetadata } from '@angular/core/testing';
 
-import { mapEntries, mapValues } from '../common/core.helpers';
 import ngMocksUniverse from '../common/ng-mocks-universe';
 
 import { MockBuilderPromise } from './mock-builder.promise';
@@ -8,7 +7,6 @@ import areEqualConfigParams from './performance/are-equal-config-params';
 import areEqualMaps from './performance/are-equal-maps';
 import areEqualProviders from './performance/are-equal-providers';
 import areEqualSets from './performance/are-equal-sets';
-import getEmptyConfig from './performance/get-empty-config';
 import requiredMetadata from './performance/required-metadata';
 import { IMockBuilderResult } from './types';
 
@@ -22,9 +20,7 @@ export class MockBuilderPerformance extends MockBuilderPromise {
     }
 
     // removal of cached promise in case of mismatch
-    if (global.has('builder:module')) {
-      global.delete(global.get('builder:module'));
-    }
+    global.delete('builder:promise');
 
     const clone = this.cloneConfig();
     const ngModule = super.build();
@@ -44,7 +40,7 @@ export class MockBuilderPerformance extends MockBuilderPromise {
 
     const flags = global.has('bullet') && global.has('builder:module') && global.has('builder:config');
     if (flags && this.equalsTo(global.get('builder:config'))) {
-      return global.get(global.get('builder:module')).then(fulfill, reject);
+      return global.get('builder:promise').then(fulfill, reject);
     }
 
     // we need to reset testing module in case if we are in bullet mode but current module does not match.
@@ -56,26 +52,23 @@ export class MockBuilderPerformance extends MockBuilderPromise {
     }
 
     const promise = super.then(fulfill, reject);
-    global.set(global.get('builder:module'), promise);
+    global.set('builder:promise', promise);
 
     return promise;
   }
 
   private cloneConfig() {
-    const config = getEmptyConfig();
-
-    mapValues(this.beforeCC, config.beforeCC);
-    mapValues(this.excludeDef, config.excludeDef);
-    mapValues(this.keepDef, config.keepDef);
-    mapValues(this.mockDef, config.mockDef);
-    mapValues(this.replaceDef, config.replaceDef);
-
-    mapEntries(this.configDef, config.configDef);
-    mapEntries(this.defProviders, config.defProviders);
-    mapEntries(this.defValue, config.defValue);
-    mapEntries(this.providerDef, config.providerDef);
-
-    return config;
+    return {
+      beforeCC: new Set(this.beforeCC),
+      configDef: new Map(this.configDef),
+      defProviders: new Map(this.defProviders),
+      defValue: new Map(this.defValue),
+      excludeDef: new Set(this.excludeDef),
+      keepDef: new Set(this.keepDef),
+      mockDef: new Set(this.mockDef),
+      providerDef: new Map(this.providerDef),
+      replaceDef: new Set(this.replaceDef),
+    };
   }
 
   private equalsTo(prototype: Record<keyof any, any>): boolean {

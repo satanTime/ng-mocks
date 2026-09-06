@@ -1,4 +1,3 @@
-import { mapEntries, mapValues } from '../../common/core.helpers';
 import { funcExtractDeps } from '../../common/func.extract-deps';
 import { getNgType } from '../../common/func.get-ng-type';
 import { isNgInjectionToken } from '../../common/func.is-ng-injection-token';
@@ -21,9 +20,10 @@ const addDependencies = (
   defs: DependencyDefs,
   onDependency?: (dependency: any) => void,
 ): void => {
+  const visited = new Set<any>();
   for (const def of defs) {
-    const extractedDependencies = funcExtractDeps(def, new Set(), true);
-    for (const dependency of mapValues(extractedDependencies)) {
+    const extractedDependencies = funcExtractDeps(def, new Set(), true, visited);
+    for (const dependency of extractedDependencies) {
       dependencies.add(dependency);
       onDependency?.(dependency);
     }
@@ -48,8 +48,8 @@ const keepReplacementDependency = (resolutions: Map<any, string>, replacementDep
   }
 };
 
-const addDefinitionsAndDependencies = (dependencies: Set<any>, defs: DependencyDefs): void => {
-  for (const dependency of mapValues(defs)) {
+const addDefinitionsAndDependencies = (dependencies: Set<any>, defs: Set<any>): void => {
+  for (const dependency of defs) {
     dependencies.add(dependency);
   }
 
@@ -121,11 +121,11 @@ export default ({
   const dependencies = initKeepDef(keepDef, configDef);
   const resolutions: Map<any, string> = ngMocksUniverse.config.get('ngMocksDepsResolution');
 
-  for (const dependency of mapValues(dependencies)) {
+  for (const dependency of dependencies) {
     ngMocksUniverse.touches.add(dependency);
   }
 
-  for (const [dependency, [resolution]] of mapEntries(ngMocksUniverse.getDefaults())) {
+  for (const [dependency, [resolution]] of ngMocksUniverse.getDefaults()) {
     if (resolution === 'mock' && isNgInjectionToken(dependency)) {
       dependencies.add(dependency);
     }
@@ -138,7 +138,7 @@ export default ({
 
   // Replacement dependencies need a dedicated pass because the replacement side
   // contributes the real providers / tokens we actually want to keep.
-  for (const dependency of mapValues(replaceDef)) {
+  for (const dependency of replaceDef) {
     dependencies.add(dependency);
     addDependencies(dependencies, [dependency, defValue.get(dependency)], replacementDependency =>
       keepReplacementDependency(resolutions, replacementDependency),
@@ -148,7 +148,8 @@ export default ({
   // Global replace rules are discovered while traversing dependencies, so we need
   // one more pass to pull replacement dependencies for entries that were not part
   // of the initial explicit replace set.
-  for (const dependency of mapValues(dependencies)) {
+  // eslint-disable-next-line unicorn/no-useless-spread -- addDependencies expands this set during the pass.
+  for (const dependency of [...dependencies]) {
     if (ngMocksUniverse.getResolution(dependency) === 'replace') {
       addDependencies(
         dependencies,
@@ -160,7 +161,8 @@ export default ({
 
   // Once the dependency graph is complete, assign the final keep/mock/exclude/replace
   // behavior for each discovered dependency and persist it into ngMocksUniverse config.
-  for (const dependency of mapValues(dependencies)) {
+  // eslint-disable-next-line unicorn/no-useless-spread -- applyResolution can add replacement dependencies to this set.
+  for (const dependency of [...dependencies]) {
     if (configDef.has(dependency)) {
       continue;
     }
@@ -178,7 +180,8 @@ export default ({
     );
   }
 
-  for (const [k, v] of mapEntries(configDef)) {
+  // eslint-disable-next-line unicorn/no-useless-spread -- User config getters can change builder definitions during copying.
+  for (const [k, v] of [...configDef]) {
     ngMocksUniverse.config.set(k, {
       ...ngMocksUniverse.getConfigMock().get(k),
       ...v,
