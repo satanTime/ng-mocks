@@ -1,3 +1,16 @@
+## [14.17.5](https://github.com/help-me-mom/ng-mocks/compare/v14.17.4...v14.17.5) (2026-09-06)
+
+
+### Bug Fixes
+
+* **ContentChild:** preserve descendants and document content queries [#2437](https://github.com/help-me-mom/ng-mocks/issues/2437) ([#14811](https://github.com/help-me-mom/ng-mocks/issues/14811)) ([07acb78](https://github.com/help-me-mom/ng-mocks/commit/07acb782fe688ad71eb07cde9fe83eac693c62db))
+* **core:** removing eval ([#14816](https://github.com/help-me-mom/ng-mocks/issues/14816)) ([c2cade5](https://github.com/help-me-mom/ng-mocks/commit/c2cade530a51372584ebcf4f9660dea485492362))
+
+
+### Performance Improvements
+
+* reduce runtime overhead during specs ([#14815](https://github.com/help-me-mom/ng-mocks/issues/14815)) ([6cd3bd8](https://github.com/help-me-mom/ng-mocks/commit/6cd3bd8e9ce84c82f26f1ee6cc96d39c2380c0d8))
+
 ## [14.17.4](https://github.com/help-me-mom/ng-mocks/compare/v14.17.3...v14.17.4) (2026-09-05)
 
 
